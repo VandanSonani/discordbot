@@ -4,7 +4,6 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 from io import BytesIO
 import discord
 from discord.ext import commands
-import logging
 import os
 import json
 import requests
@@ -20,7 +19,6 @@ from torch.cpu import stream
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
 
-handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -116,13 +114,27 @@ def get_avatar_headshot_url(username, size='150x150', format='png', isCircular=T
         print(f"No avatar headshot found for user {user_id}.")
         return None
 
+def get_display_name(user_id):
+    url = f"https://users.roblox.com/v1/users/{user_id}"
+    headers = {"Content-Type": "application/json"}
 
-def create_image(username: str, kills: str, deaths: str, assists: str, damage: str, wins: str, losses: str, accuracy: str, coins: str, tier: str, kdr: str, wr: str, wlr: str, crosshair: str):
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        print(f"Error fetching display name for user {user_id}: {response.status_code}, {response.text}")
+        return None
+
+    data = response.json()
+    return data.get("displayName", None)
+
+
+def create_image(username: str, kills: str, deaths: str, assists: str, damage: str, wins: str, losses: str, accuracy: str, coins: str, tier: str, kdr: str, wr: str, wlr: str, crosshair: str, displayName: str):
     image = Image.open("assets/templateNew.png")
     label_font = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf",size = 20)
     title_font = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=48)
     stat_font = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=20)
     main_stats = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=36)
+    midFont = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf", size=20)
     sub_label = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf", size=10)
     print("creating image")
 
@@ -130,8 +142,9 @@ def create_image(username: str, kills: str, deaths: str, assists: str, damage: s
     draw = ImageDraw.Draw(image)
 
     #create top profile section
-    draw.text((250, 100), username, font=title_font ,fill="white")
-    draw.text((250, 225), f"crosshair id:{str(crosshair)}", font=sub_label, fill="grey")
+    draw.text((250, 100),  displayName, font=title_font ,fill="white")
+    draw.text((250, 160),  f"@{username}", font=midFont ,fill="grey")
+    # draw.text((250, 185), f"crosshair: {str(crosshair)}", font=sub_label, fill="grey")
 
     avatar_image = get_avatar_headshot_url(username)
     ai = Image.open(requests.get(avatar_image, stream=True).raw)
@@ -183,6 +196,7 @@ def create_image(username: str, kills: str, deaths: str, assists: str, damage: s
 async def stats(ctx, username: str):
     #TODO get user id from user name
     user_id = get_user_id_from_username(username)
+    displayName = get_display_name(user_id)
     entry = get_entry_by_userid(universe_id, data_store_name, user_id)
 
     print(entry)
@@ -213,7 +227,7 @@ async def stats(ctx, username: str):
 
     accuracy = str(f"{(shotshit / shotsfired ) * 100:.2f}%")
     print("TESTING MAIN CALL")
-    image_path = create_image(username, kills, deaths, assists, damage, wins, losses, accuracy, coins, tier, kdr, wr, wlr, crosshair)
+    image_path = create_image(username, kills, deaths, assists, damage, wins, losses, accuracy, coins, tier, kdr, wr, wlr, crosshair, displayName)
     # if image_path is None:
     #     image_path = "assets/template.png"
     file = discord.File(image_path)
@@ -239,5 +253,5 @@ async def on_ready():
 async def stats(ctx):
     await ctx.send(f"There are {ctx.guild.member_count} members in this server.")
 
-bot.run(token, log_handler=handler, log_level=logging.DEBUG)
+bot.run(token)
 
