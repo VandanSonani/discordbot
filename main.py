@@ -1,6 +1,6 @@
 import io
 from xml.etree.ElementTree import tostring
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import discord
 from discord.ext import commands
@@ -10,11 +10,6 @@ import requests
 from dotenv import load_dotenv
 import urllib.parse
 import textwrap
-
-from nltk import accuracy
-from nltk.corpus.reader import titles
-from requests import options
-from torch.cpu import stream
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
