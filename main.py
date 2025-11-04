@@ -10,7 +10,12 @@ import json
 import requests
 from dotenv import load_dotenv
 import urllib.parse
+import textwrap
+
+from nltk import accuracy
+from nltk.corpus.reader import titles
 from requests import options
+from torch.cpu import stream
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
@@ -95,17 +100,80 @@ def get_user_id_from_username(username):
         return None
 
 
-def create_image(username: str):
-    image = Image.open("assets/template.png")
-    font = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf", size=24)
+def get_avatar_headshot_url(username, size='150x150', format='png', isCircular=True):
+    user_id = get_user_id_from_username(username)
+    url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&size={size}&format={format}&isCircular={str(isCircular).lower()}"
+    response = requests.get(url)
+
+    if response.status_code != 200:
+        print(f"Error fetching avatar headshot for user {user_id}: {response.status_code}, {response.text}")
+        return None
+
+    data = response.json()
+    if 'data' in data and len(data['data']) > 0:
+        return data['data'][0]['imageUrl']
+    else:
+        print(f"No avatar headshot found for user {user_id}.")
+        return None
+
+
+def create_image(username: str, kills: str, deaths: str, assists: str, damage: str, wins: str, losses: str, accuracy: str, coins: str, tier: str, kdr: str, wr: str, wlr: str, crosshair: str):
+    image = Image.open("assets/templateNew.png")
+    label_font = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf",size = 20)
+    title_font = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=48)
+    stat_font = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=20)
+    main_stats = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=36)
+    sub_label = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf", size=10)
+    print("creating image")
+
     cx, cy = 50, 50
     draw = ImageDraw.Draw(image)
-    draw.text((100, 100), username, font=font, fill="white")
-    draw.text((150, 225), "kills", font=font, fill="white")
-    draw.text((150, 250), "deaths", font=font, fill="white")
-    draw.text((150, 275), "assists", font=font, fill="white")
-    draw.text((150, 300), "damage", font=font, fill="white")
-    draw.text((300, 225), "wins", font=font, fill="white")
+
+    #create top profile section
+    draw.text((250, 100), username, font=title_font ,fill="white")
+    draw.text((250, 225), f"crosshair id:{str(crosshair)}", font=sub_label, fill="grey")
+
+    avatar_image = get_avatar_headshot_url(username)
+    ai = Image.open(requests.get(avatar_image, stream=True).raw)
+    avatar_w, avatar_h = ai.size
+    image_w, image_h = image.size
+    ai.resize((image_w-50, image_h-50))
+    offset = ((image_w - avatar_w) - 532, (image_h - avatar_h) - 438)
+    image.paste(ai, offset, ai)
+
+    #main top label values
+    draw.text((175, 270), str(tier), font=main_stats, fill="orange", anchor="mm")
+    draw.text((310, 270), str(f"{kdr:.2f}"), font=main_stats, fill="white", anchor="mm")
+    draw.text((460, 270), str(f"{wlr:.2f}"), font=main_stats, fill="white", anchor="mm")
+    draw.text((610, 270), str(f"{wr:.2f}%"), font=main_stats, fill="white", anchor="mm")
+
+    # main top labels
+    draw.text((165, 295), "tier", font=label_font, fill="orange")
+    draw.text((300, 295), "kdr", font=label_font, fill="white")
+    draw.text((450, 295), "wlr", font=label_font, fill="white")
+    draw.text((600, 295), "wr", font=label_font, fill="white")
+
+
+    # stat labels
+    draw.text((165, 365), "kills", font=label_font, fill="grey")
+    draw.text((165, 415), "deaths", font=label_font, fill="grey")
+    draw.text((165, 465), "assists", font=label_font, fill="grey")
+    draw.text((165, 515), "damage", font=label_font, fill="grey")
+    draw.text((400, 365), "wins", font=label_font, fill="grey")
+    draw.text((400, 415), "losses", font=label_font, fill="grey")
+    draw.text((400, 465), "accuracy", font=label_font, fill="grey")
+    draw.text((400, 488), "(last 20 matches)", font=sub_label, fill="grey")
+    draw.text((400, 515), "coins", font=label_font, fill="grey")
+
+    #stat values
+    draw.text((375, 375), str(kills), font=stat_font, fill="white", anchor="rt")
+    draw.text((375, 425), str(deaths), font=stat_font, fill="white", anchor="rt")
+    draw.text((375, 475), str(assists), font=stat_font, fill="white", anchor="rt")
+    draw.text((375, 525), str(damage), font=stat_font, fill="white", anchor="rt")
+    draw.text((615, 375), str(wins), font=stat_font, fill="white", anchor="rt")
+    draw.text((615, 425), str(losses), font=stat_font, fill="white", anchor="rt")
+    draw.text((615, 475), str(accuracy), font=stat_font, fill="white", anchor="rt")
+    draw.text((615, 525), str(coins), font=stat_font, fill="white", anchor="rt")
 
     output_path = "output.png"
     image.save(output_path)
@@ -117,13 +185,35 @@ async def stats(ctx, username: str):
     user_id = get_user_id_from_username(username)
     entry = get_entry_by_userid(universe_id, data_store_name, user_id)
 
-
+    print(entry)
     print(entry["value"]["Data"]["Assists"])
+    crosshair = entry["value"]["Data"]["EquippedCrosshair"]
     assists = entry["value"]["Data"]["Assists"]
     deaths = entry["value"]["Data"]["Deaths"]
     kills = entry["value"]["Data"]["Kills"]
+    wins = entry["value"]["Data"]["Wins"]
+    losses = entry["value"]["Data"]["Losses"]
+    streak = entry["value"]["Data"]["Highest_Win_Streak"]
+    damage = entry["value"]["Data"]["Damage"]
+    coins = entry["value"]["Data"]["Coins"]
+    tier = entry["value"]["Data"]["Tier"]
+    wlr = wins / losses if losses != 0 else wins
+    wr = wins / (wins + losses) * 100 if (wins + losses) != 0 else 0
     kdr = kills / deaths if deaths != 0 else kills
-    image_path = create_image(username)
+
+    shotsfired = 0
+    shotshit = 0
+
+    matchhistory = entry["value"]["Data"]["MatchHistory"]
+
+    for match in matchhistory:
+        print(match["PlayerStats"][username])
+        shotsfired += match["PlayerStats"][username]["ShotsFired"]
+        shotshit += match["PlayerStats"][username]["ShotsHit"]
+
+    accuracy = str(f"{(shotshit / shotsfired ) * 100:.2f}%")
+    print("TESTING MAIN CALL")
+    image_path = create_image(username, kills, deaths, assists, damage, wins, losses, accuracy, coins, tier, kdr, wr, wlr, crosshair)
     # if image_path is None:
     #     image_path = "assets/template.png"
     file = discord.File(image_path)
@@ -133,7 +223,6 @@ async def stats(ctx, username: str):
 
 
     # TODO Send Image
-    # await ctx.response.send_message(f"Kills: {kills}, Deaths: {deaths}, KDR: {kdr:.2f}")
     # TODO Delete Image from local storage
 
 @bot.event
