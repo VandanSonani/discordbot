@@ -234,6 +234,30 @@ async def stats(ctx, username: str):
     # TODO Send Image
     # TODO Delete Image from local storage
 
+
+@bot.tree.command (name = "matchhistory", description="Returns the match history of the player from RCL Duels", guild=GUILD_ID)
+async def matchhistory(ctx, username: str):
+    await ctx.response.send_message("This feature is coming soon!")
+    # user_id = get_user_id_from_username(username)
+    # entry = get_entry_by_userid(universe_id, data_store_name, user_id)
+    #
+    # matchhistory = entry["value"]["Data"]["MatchHistory"]
+    # history_strings = []
+    # for match in matchhistory:
+    #     result = "Win" if match["Result"] == "Win" else "Loss"
+    #     kills = match["PlayerStats"][username]["Kills"]
+    #     deaths = match["PlayerStats"][username]["Deaths"]
+    #     assists = match["PlayerStats"][username]["Assists"]
+    #     damage = match["PlayerStats"][username]["Damage"]
+    #     match_string = f"Match ID: {match['MatchID']} | Result: {result} | Kills: {kills} | Deaths: {deaths} | Assists: {assists} | Damage: {damage}"
+    #     history_strings.append(match_string)
+    #
+    # history_message = "\n".join(history_strings)
+    # if len(history_message) > 2000:
+    #     history_message = history_message[:1997] + "..."
+    #
+    # await ctx.response.send_message(f"Match History for {username}:\n{history_message}")
+
 @bot.event
 async def on_ready():
     print("Bot is ready!")
