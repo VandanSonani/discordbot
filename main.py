@@ -20,7 +20,12 @@ intents.members = True
 
 bot = commands.Bot(command_prefix=".", intents=intents)
 
-GUILD_ID = discord.Object(id=1410354745750847611)
+
+# MAIN SERVER ID
+# GUILD_ID = discord.Object(id=1410354745750847611)
+# TEST SERVER ID
+GUILD_ID = discord.Object(id=717814064591405086)
+
 
 
 
@@ -124,21 +129,21 @@ def get_display_name(user_id):
 
 
 def create_image(username: str, kills: str, deaths: str, assists: str, damage: str, wins: str, losses: str, accuracy: str, coins: str, tier: str, kdr: str, wr: str, wlr: str, crosshair: str, displayName: str):
-    image = Image.open("assets/templateNew.png")
+    image = Image.open("assets/StatsBoardTemplate.png")
     label_font = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf",size = 20)
     title_font = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=48)
     stat_font = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=20)
     main_stats = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=36)
-    midFont = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf", size=20)
+    mid_font = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf", size=20)
     sub_label = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf", size=10)
     print("creating image")
 
-    cx, cy = 50, 50
+
     draw = ImageDraw.Draw(image)
 
     #create top profile section
     draw.text((250, 100),  displayName, font=title_font ,fill="white")
-    draw.text((250, 160),  f"@{username}", font=midFont ,fill="grey")
+    draw.text((250, 160),  f"@{username}", font=mid_font ,fill="grey")
     # draw.text((250, 185), f"crosshair: {str(crosshair)}", font=sub_label, fill="grey")
 
     avatar_image = get_avatar_headshot_url(username)
@@ -183,7 +188,7 @@ def create_image(username: str, kills: str, deaths: str, assists: str, damage: s
     draw.text((615, 475), str(accuracy), font=stat_font, fill="white", anchor="rt")
     draw.text((615, 525), str(coins), font=stat_font, fill="white", anchor="rt")
 
-    output_path = "output.png"
+    output_path = "StatBoardOutput.png"
     image.save(output_path)
     return output_path
 
@@ -191,7 +196,7 @@ def create_image(username: str, kills: str, deaths: str, assists: str, damage: s
 async def stats(ctx, username: str):
     #TODO get user id from user name
     user_id = get_user_id_from_username(username)
-    displayName = get_display_name(user_id)
+    displayname = get_display_name(user_id)
     entry = get_entry_by_userid(universe_id, data_store_name, user_id)
 
     print(entry)
@@ -222,7 +227,7 @@ async def stats(ctx, username: str):
 
     accuracy = str(f"{(shotshit / shotsfired ) * 100:.2f}%")
     print("TESTING MAIN CALL")
-    image_path = create_image(username, kills, deaths, assists, damage, wins, losses, accuracy, coins, tier, kdr, wr, wlr, crosshair, displayName)
+    image_path = create_image(username, kills, deaths, assists, damage, wins, losses, accuracy, coins, tier, kdr, wr, wlr, crosshair, displayname)
     # if image_path is None:
     #     image_path = "assets/template.png"
     file = discord.File(image_path)
@@ -234,35 +239,96 @@ async def stats(ctx, username: str):
     # TODO Send Image
     # TODO Delete Image from local storage
 
+def create_matchhistory_image(username: str, kills: str, deaths: str, assists: str, damage: str, accuracy: str, displayname: str):
+    image = Image.open("assets/MatchHistoryTemplate.png")
+    label_font = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf",size = 20)
+    title_font = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=48)
+    stat_font = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=20)
+    main_stats = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=36)
+    mid_font = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf", size=20)
+    sub_label = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf", size=10)
+    print("creating image")
+
+
+    draw = ImageDraw.Draw(image)
+    draw.text((170, 10),  displayname, font=title_font ,fill="white")
+    draw.text((170, 70),  f"@{username}", font=mid_font ,fill="grey")
+
+# avatar image
+    avatar_image = get_avatar_headshot_url(username)
+    ai = Image.open(requests.get(avatar_image, stream=True).raw)
+    avatar_w, avatar_h = ai.size
+    image_w, image_h = image.size
+    offset = ((image_w - avatar_w) - 530, (image_h - avatar_h) - 400)
+    image.paste(ai, offset, ai)
+
+
+
+    #labels
+    draw.text((50, 150), "date", font=label_font, fill="grey")
+    draw.text((175, 150), "score", font=label_font, fill="grey")
+    draw.text((300, 150), "kda", font=label_font, fill="grey")
+    draw.text((425, 150), "damage", font=label_font, fill="grey")
+    draw.text((550, 150), "accuracy", font=label_font, fill="grey")
+
+    # crating the win/loss boxes
+    user_id = get_user_id_from_username(username)
+    entry = get_entry_by_userid(universe_id, data_store_name, user_id)
+    matchhistorylist = entry["value"]["Data"]["MatchHistory"]
+
+    x1 = 30
+    y1 = 180
+    x2 = 650
+    y2 = 220
+    box_spacing = 220
+    for match in matchhistorylist:
+        print(match["PlayerStats"][username])
+        # draw boxes
+        draw.rectangle([(x1, y1), (x2, y2)], outline="grey", width=2)
+        y2 += 50
+        y1 += 50
+
+    output_path = "MatchHistory.png"
+    image.save(output_path)
+    return output_path
+
+
 
 @bot.tree.command (name = "matchhistory", description="Returns the match history of the player from RCL Duels", guild=GUILD_ID)
 async def matchhistory(ctx, username: str):
-    await ctx.response.send_message("This feature is coming soon!")
-    # user_id = get_user_id_from_username(username)
-    # entry = get_entry_by_userid(universe_id, data_store_name, user_id)
-    #
-    # matchhistory = entry["value"]["Data"]["MatchHistory"]
-    # history_strings = []
-    # for match in matchhistory:
-    #     result = "Win" if match["Result"] == "Win" else "Loss"
-    #     kills = match["PlayerStats"][username]["Kills"]
-    #     deaths = match["PlayerStats"][username]["Deaths"]
-    #     assists = match["PlayerStats"][username]["Assists"]
-    #     damage = match["PlayerStats"][username]["Damage"]
-    #     match_string = f"Match ID: {match['MatchID']} | Result: {result} | Kills: {kills} | Deaths: {deaths} | Assists: {assists} | Damage: {damage}"
-    #     history_strings.append(match_string)
-    #
-    # history_message = "\n".join(history_strings)
-    # if len(history_message) > 2000:
-    #     history_message = history_message[:1997] + "..."
-    #
-    # await ctx.response.send_message(f"Match History for {username}:\n{history_message}")
+    user_id = get_user_id_from_username(username)
+    displayName = get_display_name(user_id)
+    entry = get_entry_by_userid(universe_id, data_store_name, user_id)
+
+    print(entry)
+    assists = entry["value"]["Data"]["Assists"]
+    deaths = entry["value"]["Data"]["Deaths"]
+    kills = entry["value"]["Data"]["Kills"]
+    damage = entry["value"]["Data"]["Damage"]
+
+    shotsfiredv2 = 0
+    shotshitv2 = 0
+
+    matchhistorylist = entry["value"]["Data"]["MatchHistory"]
+
+    for match in matchhistorylist:
+        print(match["PlayerStats"][username])
+        shotsfiredv2 += match["PlayerStats"][username]["ShotsFired"]
+        shotshitv2 += match["PlayerStats"][username]["ShotsHit"]
+
+    accuracy = str(f"{(shotshitv2 / shotsfiredv2) * 100:.2f}%")
+
+    image_path = create_matchhistory_image(username, kills, deaths, assists, damage, accuracy, displayName)
+    file = discord.File(image_path)
+    await ctx.response.send_message(file=file)
 
 @bot.event
 async def on_ready():
     print("Bot is ready!")
     try:
-        guild = discord.Object(id=1410354745750847611)
+        # guild = discord.Object(id=1410354745750847611)
+        guild = discord.Object(id=717814064591405086)
+
         synced = await bot.tree.sync(guild=guild)
         print(f"Synced {len(synced)} commands to the guild {guild.id}")
     except Exception as e:
