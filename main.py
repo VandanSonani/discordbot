@@ -97,18 +97,6 @@ def get_user_id_from_username(username):
         print(f"User '{username}' not found.")
         return None
 
-def get_current_username(user_id):
-    url = f"https://users.roblox.com/v1/users/{user_id}"
-    headers = {"Content-Type": "application/json"}
-
-    response = requests.get(url, headers=headers)
-
-    if response.status_code != 200:
-        print(f"Error fetching username for user {user_id}: {response.status_code}, {response.text}")
-        return None
-
-    data = response.json()
-    return data.get("name", None)
 
 
 def get_avatar_headshot_url(username, size='150x150', format='png', isCircular=True):
@@ -233,13 +221,42 @@ async def stats(ctx, username: str):
 
     matchhistory = entry["value"]["Data"]["MatchHistory"]
     for match in matchhistory:
-        print(match["PlayerStats"][username])
-        # print(match["PlayerStats"][get_current_username(user_id)])
+        ps = match.get("PlayerStats", {})
 
-        shotsfired += match["PlayerStats"][username]["ShotsFired"]
-        shotshit += match["PlayerStats"][username]["ShotsHit"]
+        # try to find the player's stats by user id first
+        player_stats = None
+        for key, stats in ps.items():
+            if isinstance(stats, dict):
+                uid = stats.get("UserId") or stats.get("userId")  # check common keys
+                if uid is not None and int(uid) == int(user_id):
+                    player_stats = stats
+                    break
+            # also handle case where the dict key itself is a user id string/number
+            try:
+                if str(key) == str(user_id):
+                    player_stats = stats
+                    break
+            except Exception:
+                pass
+
+        # fallback to keys by username (old/current) or first available entry
+        if player_stats is None:
+            player_stats = ps.get(username) or ps.get(str(user_id)) or next(iter(ps.values()), None)
+
+        if player_stats:
+            print(player_stats)
+            shotsfired += int(player_stats.get("ShotsFired", 0))
+            shotshit += int(player_stats.get("ShotsHit", 0))
+        else:
+            print(f"No PlayerStats found for user_id {user_id} in this match.")
+
+
 
     accuracy = str(f"{(shotshit / shotsfired ) * 100 if (shotshit + shotsfired) != 0 else 0:.2f}%")
+    print(accuracy)
+    print("shots fired:", shotsfired)
+    print("shots hit:", shotshit)
+    print("total matches:", len(matchhistory))
     print("TESTING MAIN CALL")
     image_path = create_image(username, kills, deaths, assists, damage, wins, losses, accuracy, coins, tier, kdr, wr, wlr, crosshair, displayname)
     # if image_path is None:
@@ -325,10 +342,36 @@ async def matchhistory(ctx, username: str):
 
     matchhistorylist = entry["value"]["Data"]["MatchHistory"]
 
-    for match in matchhistorylist:
-        print(match["PlayerStats"][username])
-        shotsfiredv2 += match["PlayerStats"][username]["ShotsFired"]
-        shotshitv2 += match["PlayerStats"][username]["ShotsHit"]
+    for match in matchhistory:
+        ps = match.get("PlayerStats", {})
+
+        # try to find the player's stats by user id first
+        player_stats = None
+        for key, stats in ps.items():
+            if isinstance(stats, dict):
+                uid = stats.get("UserId") or stats.get("userId")  # check common keys
+                if uid is not None and int(uid) == int(user_id):
+                    player_stats = stats
+                    break
+            # also handle case where the dict key itself is a user id string/number
+            try:
+                if str(key) == str(user_id):
+                    player_stats = stats
+                    break
+            except Exception:
+                pass
+
+        # fallback to keys by username (old/current) or first available entry
+        if player_stats is None:
+            player_stats = ps.get(username) or ps.get(str(user_id)) or next(iter(ps.values()), None)
+
+        if player_stats:
+            print(player_stats)
+            shotsfiredv2 += int(player_stats.get("ShotsFired", 0))
+            shotshitv2 += int(player_stats.get("ShotsHit", 0))
+        else:
+            print(f"No PlayerStats found for user_id {user_id} in this match.")
+
 
     accuracy = str(f"{(shotshitv2 / shotsfiredv2) * 100 if (shotshitv2 + shotsfiredv2) != 0 else 0:.2f}%")
 
