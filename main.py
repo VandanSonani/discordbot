@@ -97,6 +97,19 @@ def get_user_id_from_username(username):
         print(f"User '{username}' not found.")
         return None
 
+def get_current_username(user_id):
+    url = f"https://users.roblox.com/v1/users/{user_id}"
+    headers = {"Content-Type": "application/json"}
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        print(f"Error fetching username for user {user_id}: {response.status_code}, {response.text}")
+        return None
+
+    data = response.json()
+    return data.get("name", None)
+
 
 def get_avatar_headshot_url(username, size='150x150', format='png', isCircular=True):
     user_id = get_user_id_from_username(username)
@@ -219,13 +232,14 @@ async def stats(ctx, username: str):
     shotshit = 0
 
     matchhistory = entry["value"]["Data"]["MatchHistory"]
-
     for match in matchhistory:
         print(match["PlayerStats"][username])
+        # print(match["PlayerStats"][get_current_username(user_id)])
+
         shotsfired += match["PlayerStats"][username]["ShotsFired"]
         shotshit += match["PlayerStats"][username]["ShotsHit"]
 
-    accuracy = str(f"{(shotshit / shotsfired ) * 100:.2f}%")
+    accuracy = str(f"{(shotshit / shotsfired ) * 100 if (shotshit + shotsfired) != 0 else 0:.2f}%")
     print("TESTING MAIN CALL")
     image_path = create_image(username, kills, deaths, assists, damage, wins, losses, accuracy, coins, tier, kdr, wr, wlr, crosshair, displayname)
     # if image_path is None:
@@ -316,7 +330,7 @@ async def matchhistory(ctx, username: str):
         shotsfiredv2 += match["PlayerStats"][username]["ShotsFired"]
         shotshitv2 += match["PlayerStats"][username]["ShotsHit"]
 
-    accuracy = str(f"{(shotshitv2 / shotsfiredv2) * 100:.2f}%")
+    accuracy = str(f"{(shotshitv2 / shotsfiredv2) * 100 if (shotshitv2 + shotsfiredv2) != 0 else 0:.2f}%")
 
     image_path = create_matchhistory_image(username, kills, deaths, assists, damage, accuracy, displayName)
     file = discord.File(image_path)
