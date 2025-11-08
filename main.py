@@ -22,9 +22,9 @@ bot = commands.Bot(command_prefix=".", intents=intents)
 
 
 # MAIN SERVER ID
-# GUILD_ID = discord.Object(id=1410354745750847611)
+GUILD_ID = discord.Object(id=1410354745750847611)
 # TEST SERVER ID
-GUILD_ID = discord.Object(id=717814064591405086)
+# GUILD_ID = discord.Object(id=717814064591405086)
 
 
 
@@ -195,6 +195,7 @@ def create_image(username: str, kills: str, deaths: str, assists: str, damage: s
 
 @bot.tree.command (name="stats", description="Returns the stats of the player from RCL Duels", guild=GUILD_ID)
 async def stats(ctx, username: str):
+    await ctx.response.defer()  # acknowledge immediately
     #TODO get user id from user name
     user_id = get_user_id_from_username(username)
     displayname = get_display_name(user_id)
@@ -216,8 +217,10 @@ async def stats(ctx, username: str):
     wr = wins / (wins + losses) * 100 if (wins + losses) != 0 else 0
     kdr = kills / deaths if deaths != 0 else kills
 
+    matchhistory = entry["value"]["Data"]["MatchHistory"]
     shotsfired = 0
     shotshit = 0
+
 
     matchhistory = entry["value"]["Data"]["MatchHistory"]
     for match in matchhistory:
@@ -231,15 +234,7 @@ async def stats(ctx, username: str):
                 if uid is not None and int(uid) == int(user_id):
                     player_stats = stats
                     break
-            # also handle case where the dict key itself is a user id string/number
-            try:
-                if str(key) == str(user_id):
-                    player_stats = stats
-                    break
-            except Exception:
-                pass
 
-        # fallback to keys by username (old/current) or first available entry
         if player_stats is None:
             player_stats = ps.get(username) or ps.get(str(user_id)) or next(iter(ps.values()), None)
 
@@ -251,19 +246,14 @@ async def stats(ctx, username: str):
             print(f"No PlayerStats found for user_id {user_id} in this match.")
 
 
-
-    accuracy = str(f"{(shotshit / shotsfired ) * 100 if (shotshit + shotsfired) != 0 else 0:.2f}%")
+    accuracy = f"{(shotshit / shotsfired * 100) if shotsfired else 0:.2f}%"
     print(accuracy)
     print("shots fired:", shotsfired)
     print("shots hit:", shotshit)
-    print("total matches:", len(matchhistory))
     print("TESTING MAIN CALL")
     image_path = create_image(username, kills, deaths, assists, damage, wins, losses, accuracy, coins, tier, kdr, wr, wlr, crosshair, displayname)
-    # if image_path is None:
-    #     image_path = "assets/template.png"
     file = discord.File(image_path)
-    await ctx.response.send_message(file=file)
-
+    await ctx.followup.send(file=file)
 
 
 
@@ -306,13 +296,15 @@ def create_matchhistory_image(username: str, kills: str, deaths: str, assists: s
     user_id = get_user_id_from_username(username)
     entry = get_entry_by_userid(universe_id, data_store_name, user_id)
     matchhistorylist = entry["value"]["Data"]["MatchHistory"]
+    recent_matches = matchhistorylist[-20:] if len(matchhistorylist) > 20 else matchhistorylist
+
 
     x1 = 30
     y1 = 180
     x2 = 650
     y2 = 220
     box_spacing = 220
-    for match in matchhistorylist:
+    for match in recent_matches:
         print(match["PlayerStats"][username])
         # draw boxes
         draw.rectangle([(x1, y1), (x2, y2)], outline="grey", width=2)
@@ -340,8 +332,7 @@ async def matchhistory(ctx, username: str):
     shotsfiredv2 = 0
     shotshitv2 = 0
 
-    matchhistorylist = entry["value"]["Data"]["MatchHistory"]
-
+    matchhistory = entry["value"]["Data"]["MatchHistory"]
     for match in matchhistory:
         ps = match.get("PlayerStats", {})
 
@@ -372,7 +363,6 @@ async def matchhistory(ctx, username: str):
         else:
             print(f"No PlayerStats found for user_id {user_id} in this match.")
 
-
     accuracy = str(f"{(shotshitv2 / shotsfiredv2) * 100 if (shotshitv2 + shotsfiredv2) != 0 else 0:.2f}%")
 
     image_path = create_matchhistory_image(username, kills, deaths, assists, damage, accuracy, displayName)
@@ -383,17 +373,14 @@ async def matchhistory(ctx, username: str):
 async def on_ready():
     print("Bot is ready!")
     try:
-        # guild = discord.Object(id=1410354745750847611)
-        guild = discord.Object(id=717814064591405086)
+        guild = discord.Object(id=1410354745750847611)
+        # guild = discord.Object(id=717814064591405086)
 
         synced = await bot.tree.sync(guild=guild)
         print(f"Synced {len(synced)} commands to the guild {guild.id}")
     except Exception as e:
         print(f'Failed to sync commands: {e}')
 
-@bot.command()
-async def stats(ctx):
-    await ctx.send(f"There are {ctx.guild.member_count} members in this server.")
 
 bot.run(token)
 
