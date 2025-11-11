@@ -22,9 +22,9 @@ bot = commands.Bot(command_prefix=".", intents=intents)
 
 
 # MAIN SERVER ID
-GUILD_ID = discord.Object(id=1410354745750847611)
+# GUILD_ID = discord.Object(id=1410354745750847611)
 # TEST SERVER ID
-# GUILD_ID = discord.Object(id=717814064591405086)
+GUILD_ID = discord.Object(id=717814064591405086)
 
 
 
@@ -263,7 +263,7 @@ async def stats(ctx, username: str):
 def create_matchhistory_image(username: str, kills: str, deaths: str, assists: str, damage: str, accuracy: str, displayname: str):
     image = Image.open("assets/MatchHistoryTemplate.png")
     label_font = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf",size = 20)
-    title_font = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=48)
+    title_font = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=40)
     stat_font = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=20)
     main_stats = ImageFont.truetype("assets/TitilliumWeb-Bold.ttf", size=36)
     mid_font = ImageFont.truetype("assets/TitilliumWeb-Regular.ttf", size=20)
@@ -272,25 +272,28 @@ def create_matchhistory_image(username: str, kills: str, deaths: str, assists: s
 
 
     draw = ImageDraw.Draw(image)
-    draw.text((170, 10),  displayname, font=title_font ,fill="white")
-    draw.text((170, 70),  f"@{username}", font=mid_font ,fill="grey")
+    draw.text((120, 0),  displayname, font=title_font ,fill="white")
+    draw.text((120, 50),  f"@{username}", font=mid_font ,fill="grey")
 
 # avatar image
-    avatar_image = get_avatar_headshot_url(username)
-    ai = Image.open(requests.get(avatar_image, stream=True).raw)
+    avatar_url = get_avatar_headshot_url(username)
+    resp = requests.get(avatar_url, stream=True)
+    ai = Image.open(resp.raw).convert("RGBA")
+    max_avatar_size = (70, 70)  # change to desired max width/height
+    ai.thumbnail(max_avatar_size, Image.Resampling.LANCZOS)
     avatar_w, avatar_h = ai.size
     image_w, image_h = image.size
-    offset = ((image_w - avatar_w) - 530, (image_h - avatar_h) - 400)
+    offset = (image_w - avatar_w - 585, image_h - avatar_h - 465)
     image.paste(ai, offset, ai)
 
 
 
     #labels
-    draw.text((50, 150), "date", font=label_font, fill="grey")
-    draw.text((175, 150), "score", font=label_font, fill="grey")
-    draw.text((300, 150), "kda", font=label_font, fill="grey")
-    draw.text((425, 150), "damage", font=label_font, fill="grey")
-    draw.text((550, 150), "accuracy", font=label_font, fill="grey")
+    draw.text((50, 80), "date", font=label_font, fill="grey")
+    draw.text((175, 80), "score", font=label_font, fill="grey")
+    draw.text((300, 80), "kda", font=label_font, fill="grey")
+    draw.text((425, 80), "damage", font=label_font, fill="grey")
+    draw.text((550, 80), "accuracy", font=label_font, fill="grey")
 
     # crating the win/loss boxes
     user_id = get_user_id_from_username(username)
@@ -300,16 +303,14 @@ def create_matchhistory_image(username: str, kills: str, deaths: str, assists: s
 
 
     x1 = 30
-    y1 = 180
+    y1 = 115
     x2 = 650
-    y2 = 220
-    box_spacing = 220
+    y2 = 130
     for match in recent_matches:
         print(match["PlayerStats"][username])
-        # draw boxes
-        draw.rectangle([(x1, y1), (x2, y2)], outline="grey", width=2)
-        y2 += 50
-        y1 += 50
+        draw.rectangle([(x1, y1), (x2, y2)], outline="grey", width=1)
+        y2 += 21
+        y1 += 21
 
     output_path = "MatchHistory.png"
     image.save(output_path)
@@ -373,13 +374,29 @@ async def matchhistory(ctx, username: str):
 async def on_ready():
     print("Bot is ready!")
     try:
-        guild = discord.Object(id=1410354745750847611)
-        # guild = discord.Object(id=717814064591405086)
+        # guild = discord.Object(id=1410354745750847611)
+        guild = discord.Object(id=717814064591405086)
 
         synced = await bot.tree.sync(guild=guild)
         print(f"Synced {len(synced)} commands to the guild {guild.id}")
     except Exception as e:
         print(f'Failed to sync commands: {e}')
+
+@bot.event
+async def on_member_join(member):
+    #test server channel id
+    welcome_channel_id = 721034068057260121
+    #main server channel id
+    # welcome_channel_id = 1412194072969351170
+    welcome_channel = bot.get_channel(welcome_channel_id)
+
+    if welcome_channel:
+        await welcome_channel.send(f"Welcome to RCL Duels, {member.mention}!")
+    else:
+        print(f"Welcome channel with ID {welcome_channel_id} not found.")
+
+    print(f"{member} has joined the server.")
+
 
 
 bot.run(token)
