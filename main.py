@@ -385,19 +385,18 @@ async def on_ready():
 @bot.event
 async def on_member_join(member):
     #test server channel id
-    welcome_channel_id = 721034068057260121
+    # welcome_channel_id = 721034068057260121
     #main server channel id
-    # welcome_channel_id = 1412194072969351170
+    welcome_channel_id = 1412194072969351170
     welcome_channel = bot.get_channel(welcome_channel_id)
 
     if welcome_channel:
-        await welcome_channel.send(f"Welcome to RCL Duels, {member.mention}!")
+        msg = await welcome_channel.send(f"Welcome to RCL Duels, {member.mention}!")
+        await msg.add_reaction("👋")
     else:
         print(f"Welcome channel with ID {welcome_channel_id} not found.")
 
     print(f"{member} has joined the server.")
-
-
 
 bot.run(token)
 
